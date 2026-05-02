@@ -1,0 +1,18 @@
+flowchart LR
+    client[Cliente HTTP]
+    api[API FastAPI<br/>Rotas e contratos]
+    service[TaskService<br/>Regras de negocio]
+    advisor[PriorityAdvisor<br/>Sugestao de prioridade]
+    repository[TaskRepository<br/>Acesso a dados]
+    storage[(Persistencia<br/>atual ou futura)]
+
+    client -->|Requisicao REST| api
+    api -->|DTO validado| service
+    service -->|Criterios da tarefa| advisor
+    advisor -->|Prioridade sugerida e justificativa| service
+    service -->|CRUD de tarefa| repository
+    repository -->|Leitura e escrita| storage
+    storage -->|Dados persistidos| repository
+    repository -->|Entidade tarefa| service
+    service -->|Resultado de negocio| api
+    api -->|Resposta JSON| client
