@@ -15,6 +15,7 @@ O projeto foi desenhado para rodar localmente sem custo de API externa. Quando `
 - Pydantic v2
 - Uvicorn
 - Pytest
+- HTTPX
 - Git
 
 ## Funcionalidades
@@ -107,12 +108,6 @@ Instale as dependencias:
 pip install -r requirements.txt
 ```
 
-Para executar os testes, instale tambem o Pytest caso ele ainda nao esteja no ambiente:
-
-```bash
-pip install pytest
-```
-
 ## Execucao
 
 Inicie a API localmente:
@@ -121,11 +116,7 @@ Inicie a API localmente:
 uvicorn app.main:app --reload
 ```
 
-A API ficara disponivel em:
-
-```text
-http://127.0.0.1:8000
-```
+A API ficara disponivel em `http://127.0.0.1:8000`.
 
 Documentacao interativa:
 
@@ -139,157 +130,20 @@ Health check:
 GET /health
 ```
 
-Resposta esperada:
-
-```json
-{
-  "status": "ok",
-  "timestamp": "2026-05-02T12:00:00+00:00"
-}
-```
-
 ## Endpoints de tarefas
 
 As rotas de tarefas ficam agrupadas em `/tasks`.
 
-### Criar tarefa
-
-```http
-POST /tasks
-```
-
-Exemplo de corpo:
-
-```json
-{
-  "title": "Implementar endpoint de tarefas",
-  "description": "Criar fluxo inicial de cadastro",
-  "status": "pendente",
-  "priority": "alta"
-}
-```
-
-Resposta esperada:
-
-```http
-201 Created
-```
-
-### Criar tarefa com prioridade automatica
-
-```http
-POST /tasks?auto_priority=true
-```
-
-Quando `auto_priority=true`, o `TaskService` solicita uma sugestao ao `PriorityAdvisor`. Se nao houver chave de API ou se a chamada externa falhar, a heuristica local sera usada.
-
-### Listar tarefas
-
-```http
-GET /tasks
-```
-
-Resposta esperada:
-
-```http
-200 OK
-```
-
-### Consultar tarefa por ID
-
-```http
-GET /tasks/{task_id}
-```
-
-Respostas esperadas:
-
-```http
-200 OK
-404 Not Found
-```
-
-### Atualizar tarefa
-
-```http
-PUT /tasks/{task_id}
-```
-
-Exemplo de corpo:
-
-```json
-{
-  "title": "Implementar CRUD de tarefas",
-  "status": "em_andamento",
-  "priority": "critica"
-}
-```
-
-Respostas esperadas:
-
-```http
-200 OK
-404 Not Found
-```
-
-### Remover tarefa
-
-```http
-DELETE /tasks/{task_id}
-```
-
-Respostas esperadas:
-
-```http
-204 No Content
-404 Not Found
-```
-
-## Modelos principais
-
-### Status permitidos
-
-- `pendente`
-- `em_andamento`
-- `concluida`
-- `cancelada`
-
-### Prioridades permitidas
-
-- `baixa`
-- `media`
-- `alta`
-- `critica`
+- `POST /tasks`: cria tarefa e retorna `201 Created`.
+- `POST /tasks?auto_priority=true`: cria tarefa com prioridade sugerida.
+- `GET /tasks`: lista tarefas e retorna `200 OK`.
+- `GET /tasks/{task_id}`: consulta por ID e retorna `200 OK` ou `404 Not Found`.
+- `PUT /tasks/{task_id}`: atualiza tarefa e retorna `200 OK` ou `404 Not Found`.
+- `DELETE /tasks/{task_id}`: remove tarefa e retorna `204 No Content` ou `404 Not Found`.
 
 ## Uso da IA
 
-O componente `PriorityAdvisor` funciona em dois modos.
-
-### Sem chave de API
-
-Se `OPENAI_API_KEY` nao estiver configurada, o sistema usa apenas heuristica local.
-
-Exemplos de criterios:
-
-- termos como `urgente`, `producao`, `bloqueio` e `seguranca` tendem a gerar prioridade `critica`;
-- termos como `bug`, `cliente`, `prazo`, `hoje` e `release` tendem a gerar prioridade `alta`;
-- termos como `documentacao`, `refatorar` e `melhoria` tendem a gerar prioridade `baixa`;
-- quando nenhum criterio se aplica, a prioridade informada na tarefa e preservada.
-
-### Com chave de API
-
-Configure a chave antes de iniciar a aplicacao:
-
-Windows PowerShell:
-
-```powershell
-$env:OPENAI_API_KEY="sua-chave"
-```
-
-Linux/macOS:
-
-```bash
-export OPENAI_API_KEY="sua-chave"
-```
+Sem `OPENAI_API_KEY`, o sistema usa heuristica local. Com chave configurada, tenta consultar a LLM e usa fallback local em caso de timeout, erro HTTP, falha de rede ou resposta invalida.
 
 Variaveis opcionais:
 
@@ -297,8 +151,6 @@ Variaveis opcionais:
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_TIMEOUT_SECONDS=5
 ```
-
-Mesmo com chave configurada, a aplicacao mantem fallback obrigatorio para a heuristica local em caso de timeout, erro HTTP, falha de rede ou resposta invalida.
 
 ## Testes
 
@@ -308,7 +160,7 @@ Execute todos os testes:
 pytest
 ```
 
-Ou execute um arquivo especifico:
+Ou execute arquivos especificos:
 
 ```bash
 pytest tests/test_task_service.py
@@ -316,46 +168,29 @@ pytest tests/test_priority_advisor.py
 pytest tests/test_task_routes.py
 ```
 
-Coberturas principais:
-
-- CRUD no `TaskService`;
-- heuristica e fallback do `PriorityAdvisor`;
-- rotas `/tasks` com status `201`, `200`, `204` e `404`.
-
-## Documentacao do projeto
-
-Arquivos complementares:
-
-- `docs/escopo-mvp.md`: escopo funcional e nao funcional do MVP.
-- `docs/backlog.md`: backlog organizado por releases.
-- `docs/componentes-fluxo-dados.mmd`: diagrama Mermaid de componentes e fluxo de dados.
-
 ## Limitacoes
 
-- A persistencia e em memoria; os dados sao perdidos ao reiniciar a aplicacao.
-- Nao ha autenticacao ou autorizacao.
-- Nao ha banco de dados externo.
-- Nao ha historico de alteracoes de tarefas.
-- Nao ha paginacao, filtros avancados ou ordenacao por prioridade.
-- A heuristica local e simples e baseada em palavras-chave.
-- A chamada a LLM e opcional e deve ser usada apenas quando houver chave configurada.
+- Persistencia em memoria.
+- Sem autenticacao.
+- Sem banco de dados externo.
+- Sem historico de alteracoes.
+- Sem paginacao ou filtros avancados.
+- Heuristica local baseada em palavras-chave.
 
 ## Proximos passos
 
-- Incluir o router de tarefas no ponto de entrada principal da aplicacao, caso ainda nao esteja registrado.
-- Adicionar `pytest` ao `requirements.txt` ou separar dependencias de desenvolvimento.
-- Implementar persistencia com banco de dados.
+- Registrar o router de tarefas no ponto de entrada principal, caso ainda nao esteja registrado.
+- Separar dependencias de desenvolvimento.
+- Implementar banco de dados.
 - Criar filtros por status e ordenacao por prioridade.
-- Adicionar testes de integracao da aplicacao completa.
-- Melhorar observabilidade com logs estruturados.
-- Adicionar autenticacao para uso interno por equipe.
-- Preparar configuracao de deploy.
+- Adicionar testes de integracao.
+- Melhorar logs e observabilidade.
+- Adicionar autenticacao.
+- Preparar deploy.
 
 ## Versionamento
 
-O projeto usa Git e mensagens no padrao Conventional Commits.
-
-Exemplos:
+O projeto usa Conventional Commits:
 
 ```text
 feat: adiciona rotas de tarefas
