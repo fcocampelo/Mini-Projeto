@@ -1,69 +1,124 @@
 # Mini-Projeto
 
-MVP de uma micro-API para gestao de tarefas com priorizacao assistida por IA.
+MVP de uma micro-API de tarefas em FastAPI, com CRUD, persistencia em memoria e sugestao opcional de prioridade assistida por IA.
 
 ## Objetivo
 
-Este projeto tem como objetivo fornecer uma API simples para cadastro, consulta, atualizacao e priorizacao de tarefas. A proposta do MVP e validar um fluxo basico de gestao de tarefas, com suporte futuro de IA para sugerir prioridade com base em criterios como prazo, impacto, esforco e contexto da tarefa.
+Validar uma base simples para gestao interna de tarefas, separando responsabilidades entre API, regras de negocio, persistencia e componente de recomendacao de prioridade.
+
+O projeto foi desenhado para rodar localmente sem custo de API externa. Quando `OPENAI_API_KEY` nao estiver configurada, a prioridade sugerida usa apenas uma heuristica local.
 
 ## Stack
 
 - Python
 - FastAPI
+- Pydantic v2
 - Uvicorn
-- Pydantic
-- Ambiente virtual com `venv`
-- Git para versionamento
+- Pytest
+- Git
 
-## Funcionalidades previstas no MVP
+## Funcionalidades
 
 - Criar tarefas
 - Listar tarefas
 - Consultar tarefa por ID
-- Atualizar tarefa
-- Remover tarefa
-- Definir prioridade manualmente
-- Preparar estrutura para priorizacao assistida por IA
+- Atualizar tarefas
+- Remover tarefas
+- Validar campos com modelos Pydantic
+- Sugerir prioridade com heuristica local
+- Usar LLM opcionalmente quando houver `OPENAI_API_KEY`
+- Aplicar fallback seguro quando a chamada externa falhar
+- Expor health check da API
 
-## Como rodar localmente
+## Arquitetura
 
-### 1. Clonar o repositorio
+O projeto segue uma organizacao em camadas:
+
+```text
+app/
++-- api/
+|   +-- task_routes.py
++-- models/
+|   +-- task.py
++-- repositories/
+|   +-- task_repository.py
++-- services/
+|   +-- priority_advisor.py
+|   +-- task_service.py
++-- main.py
+```
+
+### Camadas
+
+- `app/main.py`: ponto de entrada da aplicacao FastAPI e health check.
+- `app/api/task_routes.py`: rotas HTTP de tarefas.
+- `app/models/task.py`: contratos de entrada e saida com Pydantic.
+- `app/services/task_service.py`: regras de negocio e orquestracao do CRUD.
+- `app/services/priority_advisor.py`: sugestao de prioridade com heuristica local e LLM opcional.
+- `app/repositories/task_repository.py`: persistencia inicial em memoria.
+
+O fluxo principal e:
+
+```text
+Cliente HTTP -> FastAPI Router -> TaskService -> PriorityAdvisor
+                                      |
+                                      v
+                              TaskRepository
+```
+
+O diagrama Mermaid versionado esta em:
+
+```text
+docs/componentes-fluxo-dados.mmd
+```
+
+## Instalacao
+
+Clone o repositorio e acesse a pasta do projeto:
 
 ```bash
 git clone <url-do-repositorio>
 cd Mini-Projeto
 ```
 
-### 2. Criar o ambiente virtual
+Crie o ambiente virtual:
 
 ```bash
 python -m venv .venv
 ```
 
-### 3. Ativar o ambiente virtual
+Ative o ambiente virtual.
 
-No Windows:
+Windows:
 
 ```bash
 .venv\Scripts\activate
 ```
 
-No Linux/macOS:
+Linux/macOS:
 
 ```bash
 source .venv/bin/activate
 ```
 
-### 4. Instalar dependencias
+Instale as dependencias:
 
 ```bash
-pip install fastapi uvicorn
+pip install -r requirements.txt
 ```
 
-### 5. Rodar a API
+Para executar os testes, instale tambem o Pytest caso ele ainda nao esteja no ambiente:
 
 ```bash
-uvicorn main:app --reload
+pip install pytest
+```
+
+## Execucao
+
+Inicie a API localmente:
+
+```bash
+uvicorn app.main:app --reload
 ```
 
 A API ficara disponivel em:
@@ -72,64 +127,238 @@ A API ficara disponivel em:
 http://127.0.0.1:8000
 ```
 
-A documentacao interativa ficara disponivel em:
+Documentacao interativa:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-## Estrutura inicial sugerida
+Health check:
 
-```text
-Mini-Projeto/
-├── main.py
-├── README.md
-├── .gitignore
-└── .venv/
+```http
+GET /health
 ```
 
-## Roadmap de releases
+Resposta esperada:
 
-### Release 0.1.0 - Estrutura inicial
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-05-02T12:00:00+00:00"
+}
+```
 
-- Configuracao inicial do projeto
-- Criacao do repositorio Git
-- Configuracao do `.gitignore`
-- Criacao do README
-- Setup basico com FastAPI
+## Endpoints de tarefas
 
-### Release 0.2.0 - CRUD de tarefas
+As rotas de tarefas ficam agrupadas em `/tasks`.
 
-- Criar endpoint para cadastro de tarefas
-- Criar endpoint para listagem de tarefas
-- Criar endpoint para consulta por ID
-- Criar endpoint para atualizacao de tarefas
-- Criar endpoint para remocao de tarefas
+### Criar tarefa
 
-### Release 0.3.0 - Priorizacao manual
+```http
+POST /tasks
+```
 
-- Adicionar campo de prioridade
-- Permitir classificacao por prioridade
-- Permitir filtro por status
-- Melhorar validacoes com Pydantic
+Exemplo de corpo:
 
-### Release 0.4.0 - Priorizacao assistida por IA
+```json
+{
+  "title": "Implementar endpoint de tarefas",
+  "description": "Criar fluxo inicial de cadastro",
+  "status": "pendente",
+  "priority": "alta"
+}
+```
 
-- Criar endpoint para sugestao de prioridade
-- Definir criterios de priorizacao
-- Integrar servico de IA
-- Registrar justificativa da prioridade sugerida
+Resposta esperada:
 
-### Release 0.5.0 - Persistencia
+```http
+201 Created
+```
 
-- Adicionar banco de dados
-- Criar camada de repositorio
-- Implementar migracoes
-- Persistir tarefas e historico de alteracoes
+### Criar tarefa com prioridade automatica
 
-### Release 1.0.0 - MVP estavel
+```http
+POST /tasks?auto_priority=true
+```
 
-- Consolidar endpoints principais
-- Adicionar testes automatizados
-- Revisar documentacao
-- Preparar ambiente para deploy
+Quando `auto_priority=true`, o `TaskService` solicita uma sugestao ao `PriorityAdvisor`. Se nao houver chave de API ou se a chamada externa falhar, a heuristica local sera usada.
+
+### Listar tarefas
+
+```http
+GET /tasks
+```
+
+Resposta esperada:
+
+```http
+200 OK
+```
+
+### Consultar tarefa por ID
+
+```http
+GET /tasks/{task_id}
+```
+
+Respostas esperadas:
+
+```http
+200 OK
+404 Not Found
+```
+
+### Atualizar tarefa
+
+```http
+PUT /tasks/{task_id}
+```
+
+Exemplo de corpo:
+
+```json
+{
+  "title": "Implementar CRUD de tarefas",
+  "status": "em_andamento",
+  "priority": "critica"
+}
+```
+
+Respostas esperadas:
+
+```http
+200 OK
+404 Not Found
+```
+
+### Remover tarefa
+
+```http
+DELETE /tasks/{task_id}
+```
+
+Respostas esperadas:
+
+```http
+204 No Content
+404 Not Found
+```
+
+## Modelos principais
+
+### Status permitidos
+
+- `pendente`
+- `em_andamento`
+- `concluida`
+- `cancelada`
+
+### Prioridades permitidas
+
+- `baixa`
+- `media`
+- `alta`
+- `critica`
+
+## Uso da IA
+
+O componente `PriorityAdvisor` funciona em dois modos.
+
+### Sem chave de API
+
+Se `OPENAI_API_KEY` nao estiver configurada, o sistema usa apenas heuristica local.
+
+Exemplos de criterios:
+
+- termos como `urgente`, `producao`, `bloqueio` e `seguranca` tendem a gerar prioridade `critica`;
+- termos como `bug`, `cliente`, `prazo`, `hoje` e `release` tendem a gerar prioridade `alta`;
+- termos como `documentacao`, `refatorar` e `melhoria` tendem a gerar prioridade `baixa`;
+- quando nenhum criterio se aplica, a prioridade informada na tarefa e preservada.
+
+### Com chave de API
+
+Configure a chave antes de iniciar a aplicacao:
+
+Windows PowerShell:
+
+```powershell
+$env:OPENAI_API_KEY="sua-chave"
+```
+
+Linux/macOS:
+
+```bash
+export OPENAI_API_KEY="sua-chave"
+```
+
+Variaveis opcionais:
+
+```text
+OPENAI_MODEL=gpt-4.1-mini
+OPENAI_TIMEOUT_SECONDS=5
+```
+
+Mesmo com chave configurada, a aplicacao mantem fallback obrigatorio para a heuristica local em caso de timeout, erro HTTP, falha de rede ou resposta invalida.
+
+## Testes
+
+Execute todos os testes:
+
+```bash
+pytest
+```
+
+Ou execute um arquivo especifico:
+
+```bash
+pytest tests/test_task_service.py
+pytest tests/test_priority_advisor.py
+pytest tests/test_task_routes.py
+```
+
+Coberturas principais:
+
+- CRUD no `TaskService`;
+- heuristica e fallback do `PriorityAdvisor`;
+- rotas `/tasks` com status `201`, `200`, `204` e `404`.
+
+## Documentacao do projeto
+
+Arquivos complementares:
+
+- `docs/escopo-mvp.md`: escopo funcional e nao funcional do MVP.
+- `docs/backlog.md`: backlog organizado por releases.
+- `docs/componentes-fluxo-dados.mmd`: diagrama Mermaid de componentes e fluxo de dados.
+
+## Limitacoes
+
+- A persistencia e em memoria; os dados sao perdidos ao reiniciar a aplicacao.
+- Nao ha autenticacao ou autorizacao.
+- Nao ha banco de dados externo.
+- Nao ha historico de alteracoes de tarefas.
+- Nao ha paginacao, filtros avancados ou ordenacao por prioridade.
+- A heuristica local e simples e baseada em palavras-chave.
+- A chamada a LLM e opcional e deve ser usada apenas quando houver chave configurada.
+
+## Proximos passos
+
+- Incluir o router de tarefas no ponto de entrada principal da aplicacao, caso ainda nao esteja registrado.
+- Adicionar `pytest` ao `requirements.txt` ou separar dependencias de desenvolvimento.
+- Implementar persistencia com banco de dados.
+- Criar filtros por status e ordenacao por prioridade.
+- Adicionar testes de integracao da aplicacao completa.
+- Melhorar observabilidade com logs estruturados.
+- Adicionar autenticacao para uso interno por equipe.
+- Preparar configuracao de deploy.
+
+## Versionamento
+
+O projeto usa Git e mensagens no padrao Conventional Commits.
+
+Exemplos:
+
+```text
+feat: adiciona rotas de tarefas
+test: adiciona testes do service de tarefas
+docs: atualiza README do projeto
+```
