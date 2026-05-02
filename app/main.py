@@ -3,6 +3,8 @@ from typing import TypedDict
 
 from fastapi import FastAPI
 
+from app.api.task_routes import router as task_router
+
 
 class HealthResponse(TypedDict):
     status: str
@@ -10,6 +12,7 @@ class HealthResponse(TypedDict):
 
 
 app = FastAPI(title="Mini-Projeto API")
+app.include_router(task_router)
 
 
 @app.get("/health", response_model=HealthResponse)
