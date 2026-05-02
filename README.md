@@ -179,7 +179,6 @@ pytest tests/test_task_routes.py
 
 ## Proximos passos
 
-- Registrar o router de tarefas no ponto de entrada principal, caso ainda nao esteja registrado.
 - Separar dependencias de desenvolvimento.
 - Implementar banco de dados.
 - Criar filtros por status e ordenacao por prioridade.
