@@ -126,7 +126,8 @@ def test_task_routes_return_404_for_unknown_id(
     path: str,
     json: dict[str, str] | None,
 ) -> None:
-    response = getattr(client, method)(path, json=json)
+    request = getattr(client, method)
+    response = request(path, json=json) if json is not None else request(path)
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Task not found"

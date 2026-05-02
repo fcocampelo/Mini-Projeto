@@ -48,6 +48,8 @@ def test_suggest_returns_local_priority_levels(
 def test_suggest_falls_back_to_local_priority_when_llm_call_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
     def raise_url_error(*args: object, **kwargs: object) -> None:
         raise URLError("timeout")
 
